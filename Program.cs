@@ -105,6 +105,9 @@ namespace Phase1HelloAgent
                 Console.ResetColor();
             }
 
+            builder.Plugins.AddFromType<CalculatorPlugin>();
+            builder.Plugins.AddFromType<FileAccessPlugin>();
+
             // Build the kernel container
             Kernel kernel = builder.Build();
 
@@ -113,7 +116,7 @@ namespace Phase1HelloAgent
 
             // Create a chat history object to maintain conversation context (short-term memory)
             var chatHistory = new ChatHistory(
-                "You are a Travel advisor for New York city,Give clear and concise responses."
+                   "You are a helpfull assistant."
             );
 
             Console.WriteLine("\n=======================================================");
@@ -159,13 +162,15 @@ namespace Phase1HelloAgent
                     var executionSettings = new OpenAIPromptExecutionSettings
                     {
                         Temperature = 0.7,
-                        MaxTokens = 1024
+                        MaxTokens = 1024,
+                        ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions
                     };
 
                     // Call the chat service and stream the response content token-by-token
                     await foreach (var chunk in chatCompletionService.GetStreamingChatMessageContentsAsync(chatHistory, executionSettings: executionSettings, kernel: kernel))
                     {
                         Console.Write(chunk.Content);
+                 
                         responseBuilder.Append(chunk.Content);
                     }
                     Console.WriteLine();
