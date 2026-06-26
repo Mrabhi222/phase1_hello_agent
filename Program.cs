@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using Microsoft.SemanticKernel.Connectors.Google;
 
 namespace Phase1HelloAgent
 {
@@ -46,6 +47,7 @@ namespace Phase1HelloAgent
             // "nvidia" - NVIDIA NIM API (configured with Llama 3.1 8B Instruct)
             // "ollama" - Local Ollama (phi3, llama3, etc.)
             // "openai" - Cloud OpenAI (requires OPENAI_API_KEY env var)
+            // "gemini" - Google Gemini (requires GEMINI_API_KEY env var)
             string provider = "nvidia"; 
 
             // 2. Initialize the Kernel Builder
@@ -54,16 +56,20 @@ namespace Phase1HelloAgent
             if (provider.Equals("nvidia", StringComparison.OrdinalIgnoreCase))
             {
                 string apiKey = Environment.GetEnvironmentVariable("NVIDIA_API_KEY")
-                    ?? "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";
+                    ?? "";
+
+                // Increase timeout for large models
+                var httpClient = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromMinutes(5) };
 
                 builder.AddOpenAIChatCompletion(
-                    modelId: "meta/llama-3.1-8b-instruct",
+                    modelId: "nvidia/nemotron-3-ultra-550b-a55b",
                     apiKey: apiKey,
-                    endpoint: new Uri("https://integrate.api.nvidia.com/v1")
+                    endpoint: new Uri("https://integrate.api.nvidia.com/v1"),
+                    httpClient: httpClient
                 );
 
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("🤖 Configured to use NVIDIA NIM (model: meta/llama-3.1-8b-instruct).");
+                Console.WriteLine("🤖 Configured to use NVIDIA NIM (model: nvidia/nemotron-3-ultra-550b-a55b).");
                 Console.ResetColor();
             }
             else if (provider.Equals("ollama", StringComparison.OrdinalIgnoreCase))
@@ -81,7 +87,7 @@ namespace Phase1HelloAgent
                 Console.WriteLine("👉 Make sure you have Ollama running locally ('ollama run phi3') before chatting!");
                 Console.ResetColor();
             }
-            else
+            else if (provider.Equals("openai", StringComparison.OrdinalIgnoreCase))
             {
                 // To use OpenAI:
                 // Set the OPENAI_API_KEY environment variable, or paste your API key directly below.
@@ -104,9 +110,38 @@ namespace Phase1HelloAgent
                 Console.WriteLine("🤖 Configured to use OpenAI (model: gpt-4o-mini).");
                 Console.ResetColor();
             }
+            else if (provider.Equals("gemini", StringComparison.OrdinalIgnoreCase))
+            {
+                string? apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("❌ Error: GEMINI_API_KEY environment variable is not set.");
+                    Console.WriteLine("👉 Please set the environment variable, or edit .env to pass your API key directly.");
+                    Console.ResetColor();
+                    return;
+                }
+
+                builder.AddGoogleAIGeminiChatCompletion(
+                    modelId: "gemini-1.5-flash",
+                    apiKey: apiKey
+                );
+                
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("🤖 Configured to use Google Gemini (model: gemini-1.5-flash).");
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ Error: Unknown provider '{provider}'.");
+                Console.ResetColor();
+                return;
+            }
 
             builder.Plugins.AddFromType<CalculatorPlugin>();
             builder.Plugins.AddFromType<FileAccessPlugin>();
+            builder.Plugins.AddFromType<KnowledgeBasePlugin>();
 
             // Build the kernel container
             Kernel kernel = builder.Build();
