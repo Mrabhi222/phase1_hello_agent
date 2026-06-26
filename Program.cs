@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.Connectors.Google;
 
 namespace Phase1HelloAgent
@@ -145,6 +146,9 @@ namespace Phase1HelloAgent
 
             // Build the kernel container
             Kernel kernel = builder.Build();
+
+            await MultiAgentDemo.RunAsync(kernel);
+            return; // Stop here for now
 
             // 3. Retrieve the Chat Completion Service
             var chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
